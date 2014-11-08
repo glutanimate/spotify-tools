@@ -95,6 +95,7 @@ Xdotool macro that saves the active track to your Spotify collection or notifies
 
 *Notes:* 
 
+- the script assumes that you have your album art preview set to the largest size possible. If that's not the case you will have to adjust the `CheckMarkX` and `CheckMarkY` values. Otherwise `xdotool` will "click" on the wrong part of the UI
 - might not work if Spotify is minimized
 - will temporarily change focus to Spotify when executed
 

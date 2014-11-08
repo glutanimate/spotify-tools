@@ -28,9 +28,9 @@ A collection of bash scripts interfacing with Spotify on Linux.
 
 4. Optional:
 
-    3.1. move the scripts to your `PATH`
+    4.1. move the scripts to your `PATH`
 
-    3.2. set up key-bindings in your desktop environment of choice
+    4.2. set up key-bindings in your desktop environment of choice
 
 
 ## Scripts
@@ -87,7 +87,7 @@ Shows a one-time notification containing track data and reads out the artist and
 
 **Overview**
 
-Xdotool macro that saves the active track to your Spotify collection or notifies you if its already saved.
+Xdotool macro that saves the active track to your Spotify collection or notifies you if it's already saved.
 
 **Usage**
 

@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# spotify_display_info
+# 
+# Manually display and announce Spotify track information
+# via a notification and TTS output
+# 
+# (c) Glutanimate 2014 <https://github.com/Glutanimate/>
+# License: GNU GPLv3
+# 
+# Dependencies: xdotool x11-utils libnotify-bin simple-google-tts spotify
+#
+# NOTICE:         THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW. 
+#                 EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES 
+#                 PROVIDE THE PROGRAM “AS IS” WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR 
+#                 IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY 
+#                 AND FITNESS FOR A PARTICULAR PURPOSE. THE ENTIRE RISK AS TO THE QUALITY AND 
+#                 PERFORMANCE OF THE PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE DEFECTIVE,
+#                 YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+#
+#                 IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY 
+#                 COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS THE PROGRAM AS 
+#                 PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, 
+#                 INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE 
+#                 THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR DATA BEING RENDERED 
+#                 INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A FAILURE OF THE 
+#                 PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS), EVEN IF SUCH HOLDER OR OTHER 
+#                 PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+# Variables
+
+TTSEngine="simple_google_tts en"
+WmTitle="Spotify - Linux Preview"
+
+SP_DEST="org.mpris.MediaPlayer2.spotify"
+SP_PATH="/org/mpris/MediaPlayer2"
+SP_MEMB="org.mpris.MediaPlayer2.Player"
+TEMPTHUMB="$(mktemp)"
+
+# Functions
+
+get_spotify_info(){
+  SpotifyWindow="$(xdotool search --name "$WmTitle" 2> /dev/null | head -n1)"
+
+  if [[ -z "$SpotifyWindow" ]]; then
+    echo "Error: No Spotify window found."
+    exit 1
+  fi
+
+  # DBUS parsing based on sp by Wander Nauta
+  # https://gist.github.com/wandernauta/6800547
+
+  SPOTIFY_METADATA="$(dbus-send                                                 \
+    --print-reply                                  `# We need the reply.`       \
+    --dest=$SP_DEST                                                             \
+    $SP_PATH                                                                    \
+    org.freedesktop.DBus.Properties.Get                                         \
+    string:"$SP_MEMB" string:'Metadata'                                         \
+    | grep -Ev "^method"                           `# Ignore the first line.`   \
+    | grep -Eo '("(.*)")|(\b[0-9][a-zA-Z0-9.]*\b)' `# Filter interesting fiels.`\
+    | sed -E '2~2 a|'                              `# Mark odd fields.`         \
+    | tr -d '\n'                                   `# Remove all newlines.`     \
+    | sed -E 's/\|/\n/g'                           `# Restore newlines.`        \
+    | sed -E 's/(xesam:)|(mpris:)//'               `# Remove ns prefixes.`      \
+    | sed -E 's/^"//'                              `# Strip leading...`         \
+    | sed -E 's/"$//'                              `# ...and trailing quotes.`  \
+    | sed -E 's/\"+/|/'                             `# Regard "" as seperator.`  \
+    | sed -E 's/ +/ /g'                            `# Merge consecutive spaces.`\
+  )"
+
+  ARTIST=$(echo "$SPOTIFY_METADATA" | sed -n 's/artist|//p')
+  TITLE=$(echo "$SPOTIFY_METADATA" | sed -n 's/title|//p')
+  ALBUM=$(echo "$SPOTIFY_METADATA" | sed -n 's/album|//p')
+  TRACKNUMBER=$(echo "$SPOTIFY_METADATA" | sed -n 's/trackNumber|//p')
+  ARTURL=$(echo "$SPOTIFY_METADATA" | sed -n 's/artUrl|//p')
+  wget "$ARTURL" -O "$TEMPTHUMB" > /dev/null 2>&1
+}
+
+change_spotify_volume(){
+  for i in {1..5}; do
+    sleep 0.1
+    xdotool key --window "$SpotifyWindow" "ctrl+$1"
+  done
+}
+
+gui_notify_user(){
+  notify-send -i "$TEMPTHUMB" "$ARTIST - $TITLE" "$ALBUM, Track $TRACKNUMBER"
+  change_spotify_volume "Down"
+  $TTSEngine "$ARTIST - $TITLE" > /dev/null 2>&1
+  change_spotify_volume "Up"
+}
+
+# Cleanup
+
+trap "rm -r $TEMPTHUMB" EXIT 
+
+# Main
+
+get_spotify_info
+change_spotify_volume
+gui_notify_user

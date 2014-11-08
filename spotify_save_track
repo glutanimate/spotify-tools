@@ -1,0 +1,156 @@
+#!/bin/bash
+
+# NAME:           spotify_save_track
+#
+# VERSION:        0.2
+#
+# AUTHOR:         (c) 2014 Glutanimate <https://github.com/Glutanimate/>
+#
+# DESCRIPTION:    Simple xdotool macro that saves the active track to your Spotify collection
+#
+# FEATURES:       - saves track right from the command-line (or a keybinding)
+#                 - notifies user if track is already part of their collection
+#
+# DEPENDENCIES:   xdotool x11-utils libnotify-bin imagemagick
+#
+# LICENSE:        GNU GPLv3 (http://www.gnu.de/documents/gpl-3.0.en.html)
+#
+# NOTICE:         THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW. 
+#                 EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES 
+#                 PROVIDE THE PROGRAM “AS IS” WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR 
+#                 IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY 
+#                 AND FITNESS FOR A PARTICULAR PURPOSE. THE ENTIRE RISK AS TO THE QUALITY AND 
+#                 PERFORMANCE OF THE PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE DEFECTIVE,
+#                 YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+#
+#                 IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY 
+#                 COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS THE PROGRAM AS 
+#                 PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, 
+#                 INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE 
+#                 THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR DATA BEING RENDERED 
+#                 INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A FAILURE OF THE 
+#                 PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS), EVEN IF SUCH HOLDER OR OTHER 
+#                 PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+
+## Settings
+
+# enable verbose output for debugging purposes
+Debug="0"
+
+
+## Variable assignments
+
+# Window title
+# modify this if title changes in a future update
+Title="Spotify - Linux Preview"
+
+# checkmark values for full album preview
+# adjust accordingly if you are using a smaller preview size
+CheckMarkX="280"
+CheckMarkY="70"
+
+# Dialogs
+
+ErrMsgNotFound="Error: Spotify not found."
+InfoMsgNoAction="Track is already part of your collection"
+InfoMsgSaved="Track has been saved to your music collection"
+
+
+## Functions
+
+gui_notify(){
+    echo "$1"
+    notify-send -i spotify "Spotifysave" "$1"
+}
+
+store_active(){
+    # get current mouse coords
+    eval "$(xdotool getmouselocation --shell 2> /dev/null )"
+    # get current workspace
+    ActiveDesktop="$(xdotool get_desktop)"
+    # get current active window ID
+    ActiveWindowID="$(xdotool getactivewindow)"
+    # get current active window name
+    ActiveWindowName="$(xdotool getwindowname "$ActiveWindowID")"
+    # get Spotify window
+    SpotifyWindow="$(xdotool search --name "$Title" | head -n1)"
+}
+
+check_spotify(){
+    if [[ -z "$SpotifyWindow" ]]
+      then
+          gui_notify "$ErrMsgNotFound"
+          exit 1
+    fi
+}
+
+get_spotify_coords(){
+    XWinInfoOut="$(xwininfo -all -int -id "$SpotifyWindow")"
+
+    SpotifyWidth="$(echo "$XWinInfoOut" | grep Width \
+    | cut -d ':' -f2 | cut -d ' ' -f2)"
+    SpotifyHeight="$(echo "$XWinInfoOut" | grep Height \
+    | cut -d ':' -f2 | cut -d ' ' -f2)"
+
+    TopLeftX="$(echo "$XWinInfoOut" | grep Absolute \
+    | grep X |cut -d ':' -f2 | sed 's/ //g')"
+    TopLeftY="$(echo "$XWinInfoOut" | grep Absolute \
+    | grep Y |cut -d ':' -f2 | sed 's/ //g')"
+
+    BottomLeftX="$TopLeftX"
+    BottomLeftY="$((TopLeftY + SpotifyHeight))"
+    
+    SaveX="$((BottomLeftX + CheckMarkX))"
+    SaveY="$((BottomLeftY - CheckMarkY))"
+
+    ColorX="$CheckMarkX"
+    ColorY="$((SpotifyHeight - CheckMarkY))"
+}
+
+get_pixel_color(){
+  xwd -id "$SpotifyWindow" -silent | \
+    convert xwd:- -depth 8 -crop "1x1+$ColorX+$ColorY" txt:- | grep -om1 '#\w\+'
+}
+
+save_track(){
+    xdotool windowactivate "$SpotifyWindow"
+    PixelColor="$(get_pixel_color)"
+    if [[ "$PixelColor" = "#222326" ]]
+      then
+          gui_notify "$InfoMsgNoAction"    
+      else
+          xdotool mousemove "$SaveX" "$SaveY"
+          xdotool click 1
+          gui_notify "$InfoMsgSaved"
+    fi
+    
+}
+
+restore_active(){
+    xdotool set_desktop "$ActiveDesktop"
+    # Activating the root window (Desktop) results in an error message, so we
+    # try to avoid it
+    [[ "$ActiveWindowName" != "Desktop" ]] && xdotool windowactivate "$ActiveWindowID"
+    xdotool mousemove "$X" "$Y"
+}
+
+debug_vars(){
+    echo "SpotifyWindow: $SpotifyWindow"
+    echo "SpotifyWidth: $SpotifyWidth SpotifyHeight: $SpotifyHeight"
+    echo "TopLeftX: $TopLeftX TopLeftY: $TopLeftY"
+    echo "BottomLeftX: $BottomLeftX BottomLeftY: $BottomLeftY"
+    echo "SaveX: $SaveX SaveY: $SaveY"
+    echo "PixelColor: $PixelColor"
+    echo "X: $X"
+    echo "Y: $Y"
+}
+
+## Main
+
+store_active
+check_spotify
+get_spotify_coords
+save_track
+restore_active
+[[ "$Debug" = "1" ]] && debug_vars

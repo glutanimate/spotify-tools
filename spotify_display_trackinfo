@@ -30,7 +30,7 @@
 # Variables
 
 TTSEngine="simple_google_tts en"
-WmTitle="Spotify - Linux Preview"
+WmTitle="Spotify (Premium |Unlimited )?- Linux Preview"
 
 SP_DEST="org.mpris.MediaPlayer2.spotify"
 SP_PATH="/org/mpris/MediaPlayer2"

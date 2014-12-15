@@ -29,7 +29,7 @@
 
 # Variables
 
-WmTitle="Spotify - Linux Preview"
+WmTitle="Spotify (Premium |Unlimited )?- Linux Preview"
 SpotifyWindow="$(xdotool search --name "$WmTitle" 2> /dev/null | head -n1)"
 
 Usage="$0 Up|Down"

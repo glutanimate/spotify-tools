@@ -43,7 +43,7 @@ Debug="0"
 
 # Window title
 # modify this if title changes in a future update
-Title="Spotify - Linux Preview"
+WmTitle="Spotify (Premium |Unlimited )?- Linux Preview"
 
 # checkmark values for full album preview
 # adjust accordingly if you are using a smaller preview size
@@ -74,7 +74,7 @@ store_active(){
     # get current active window name
     ActiveWindowName="$(xdotool getwindowname "$ActiveWindowID")"
     # get Spotify window
-    SpotifyWindow="$(xdotool search --name "$Title" | head -n1)"
+    SpotifyWindow="$(xdotool search --name "$WmTitle" | head -n1)"
 }
 
 check_spotify(){

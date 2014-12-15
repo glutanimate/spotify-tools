@@ -33,7 +33,7 @@ TTSEngine="simple_google_tts en" # Modify this to change the TTS command.
                                  # Uses simple-google-tts by default:
                                  # (https://github.com/Glutanimate/simple-google-tts)
 
-WmTitle="Spotify - Linux Preview"
+WmTitle="Spotify (Premium |Unlimited )?- Linux Preview"
 
 # Functions
 
